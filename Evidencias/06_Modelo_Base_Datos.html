@@ -1,0 +1,25 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Modelo de base de datos - Cooperativa El Progreso</title><link rel="stylesheet" href="estilos.css"></head><body>
+<section class="cover"><span class="tag">NORMA 220501095</span><h1>Modelo de base de datos</h1><div class="subtitle">Propuesta para una implementación futura</div><p class="meta">Modelo relacional de la Cooperativa El Progreso<br>Versión 1.0 | 2026</p></section>
+<div class="warning"><b>Alcance:</b> este modelo no reemplaza el <code>InMemoryStore</code> actual. Es una propuesta de persistencia para conservar los datos después de cerrar la aplicación.</div>
+<h2>1. Entidades principales</h2><div class="diagram"><div class="node">USUARIOS<br><span class="small">cajeros y administradores</span></div><span class="arrow">1 → N</span><div class="node">MOVIMIENTOS</div><br><div class="node">ASOCIADOS</div><span class="arrow">1 → N</span><div class="node">MOVIMIENTOS</div><br><div class="node">MOVIMIENTOS</div><span class="arrow">N → 1</span><div class="node">TIPOS_MOVIMIENTO</div><br><div class="node">TRM</div><span class="arrow">1 → N</span><div class="node">CONSULTAS_TRM</div></div>
+<h2>2. Tablas y campos</h2><table><tr><th>Tabla</th><th>Campos principales</th></tr><tr><td><b>asociados</b></td><td><code>id</code> PK, <code>numero_documento</code> UNIQUE, <code>nombre_completo</code>, <code>telefono</code>, <code>direccion</code>, <code>fecha_registro</code>, <code>estado</code></td></tr><tr><td><b>usuarios</b></td><td><code>id</code> PK, <code>nombre</code>, <code>rol</code>, <code>activo</code></td></tr><tr><td><b>tipos_movimiento</b></td><td><code>id</code> PK, <code>codigo</code> UNIQUE, <code>nombre</code></td></tr><tr><td><b>movimientos</b></td><td><code>id</code> PK, <code>asociado_id</code> FK, <code>usuario_id</code> FK, <code>tipo_id</code> FK, <code>monto</code>, <code>comision</code>, <code>fecha</code></td></tr><tr><td><b>trm</b></td><td><code>id</code> PK, <code>valor</code>, <code>vigencia_desde</code>, <code>vigencia_hasta</code>, <code>consultada_en</code></td></tr><tr><td><b>consultas_trm</b></td><td><code>id</code> PK, <code>asociado_id</code> FK, <code>trm_id</code> FK, <code>saldo_cop</code>, <code>saldo_usd</code>, <code>consultada_en</code></td></tr></table>
+<h2>3. Relaciones</h2><ul><li>Un asociado puede tener cero o muchos movimientos.</li><li>Un usuario puede registrar muchos movimientos.</li><li>Cada movimiento tiene un único tipo: depósito o retiro.</li><li>Una TRM puede ser utilizada en muchas consultas.</li><li>Un asociado puede tener muchas consultas de conversión.</li></ul>
+<h2>4. Propuesta SQL</h2><pre>CREATE TABLE asociados (
+  id UUID PRIMARY KEY,
+  numero_documento VARCHAR(30) NOT NULL UNIQUE,
+  nombre_completo VARCHAR(150) NOT NULL,
+  telefono VARCHAR(30), direccion VARCHAR(200),
+  fecha_registro TIMESTAMP NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'ACTIVO'
+);
+
+CREATE TABLE movimientos (
+  id UUID PRIMARY KEY,
+  asociado_id UUID NOT NULL REFERENCES asociados(id),
+  usuario_id UUID REFERENCES usuarios(id),
+  tipo_id INT NOT NULL REFERENCES tipos_movimiento(id),
+  monto DECIMAL(18,2) NOT NULL CHECK (monto > 0),
+  comision DECIMAL(18,2) NOT NULL DEFAULT 0,
+  fecha TIMESTAMP NOT NULL
+);</pre>
+<h2>5. Decisiones técnicas</h2><ul><li>El saldo no se almacena como columna; se calcula sumando depósitos y restando retiros, igual que en la aplicación actual.</li><li>Los movimientos no deben actualizarse ni eliminarse para conservar trazabilidad.</li><li>El documento del asociado es único.</li><li>Las llaves foráneas garantizan que no existan movimientos sin asociado.</li><li>Los índices recomendados son documento, fecha y asociado_id.</li></ul><div class="footer">Cooperativa Financiera El Progreso - Modelo de base de datos futuro</div></body></html>

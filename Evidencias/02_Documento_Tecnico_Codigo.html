@@ -1,0 +1,37 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Documento técnico - Cooperativa El Progreso</title><link rel="stylesheet" href="estilos.css"></head><body>
+<section class="cover"><span class="tag">NORMA 220501096</span><h1>Documento técnico de código fuente</h1><div class="subtitle">Cooperativa Financiera El Progreso</div><p class="meta">Estructura, flujo, tecnologías y decisiones técnicas<br>Versión 1.0 | 2026</p></section>
+<h2>1. Estructura del proyecto</h2><pre>CooperativaElProgreso/
+├── Enums/                         Tipos enumerados
+├── Models/                        Entidades y resultados
+│   └── Reports/                   DTO de reportes
+├── IInterfaces/                   Contratos de servicios y repositorios
+├── Repositories/                  Persistencia en memoria
+├── Services/                      Reglas del negocio
+├── Infrastructure/ExternalServices/ Cliente de TRM
+├── Data/                          Almacenamiento y datos iniciales
+└── UI/                            Menús de consola
+
+CooperativaElProgreso.Tests/       Pruebas unitarias xUnit</pre>
+<h2>2. Descripción de carpetas y módulos</h2><table><tr><th>Carpeta</th><th>Descripción</th></tr><tr><td>Models</td><td>Clases <code>Member</code>, <code>Movement</code>, <code>ExchangeRate</code> y resultados genéricos.</td></tr><tr><td>IInterfaces</td><td>Contratos que desacoplan las capas.</td></tr><tr><td>Repositories</td><td>Operaciones sobre el almacenamiento en memoria.</td></tr><tr><td>Services</td><td>Validaciones, movimientos, saldo y reportes.</td></tr><tr><td>Infrastructure</td><td>Comunicación con la API externa de TRM.</td></tr><tr><td>Data</td><td>Listas compartidas y datos de demostración.</td></tr><tr><td>UI</td><td>Menús y navegación de consola.</td></tr><tr><td>Tests</td><td>Pruebas de reglas de negocio y dobles de prueba.</td></tr></table>
+<h2>3. Flujo general del sistema</h2><ol><li><code>Program.cs</code> crea el almacenamiento, repositorios, servicios y menús.</li><li>El usuario selecciona el menú de cajero o de administración.</li><li>El menú llama una interfaz de servicio.</li><li>El servicio valida la entrada y aplica reglas del negocio.</li><li>El repositorio consulta o agrega información al almacenamiento.</li><li>El servicio retorna un <code>OperationResult</code> y la UI muestra el mensaje.</li></ol>
+<h2>4. Flujo de consulta de TRM</h2><ol><li><code>MemberService.GetBalanceInUsdAsync</code> valida que exista el asociado.</li><li>Solicita la TRM a <code>IExchangeRateService</code>.</li><li><code>TrmExchangeRateService</code> ejecuta un <code>GET</code> asíncrono con <code>HttpClient</code>.</li><li>Valida HTTP, JSON, valor y fechas.</li><li>Calcula el saldo en dólares y devuelve el resultado.</li></ol>
+<h2>5. Fragmentos relevantes</h2><h3>Composición de dependencias</h3><pre>IMemberRepository memberRepository = new MemberRepository(store);
+IMovementRepository movementRepository = new MovementRepository(store);
+IExchangeRateService exchangeRateService = new TrmExchangeRateService();
+IMemberService memberService = new MemberService(
+    memberRepository, movementRepository, exchangeRateService);</pre><p>El programa inyecta implementaciones concretas detrás de interfaces. Esto facilita reemplazarlas en pruebas o en una futura implementación.</p>
+<h3>Saldo derivado</h3><pre>public decimal GetBalance(Guid memberId) =&gt;
+    _movementRepository.GetByMemberId(memberId)
+        .Sum(m =&gt; m.SignedTotal);</pre><p>El saldo se calcula con el historial, en lugar de almacenarse como un campo independiente.</p>
+<h3>Regla de retiro</h3><pre>var fee = amount &gt; 1_000_000m ? 8_000m : 0m;
+var currentBalance = movements.Sum(m =&gt; m.SignedTotal);
+var totalToDeduct = amount + fee;
+if (totalToDeduct &gt; currentBalance)
+    return OperationResult&lt;Movement&gt;.Fail("Saldo insuficiente");</pre><p>La validación se realiza antes de guardar el movimiento; por tanto, una operación rechazada no altera el historial.</p>
+<h3>Integración tolerante a fallos</h3><pre>using var response = await _httpClient.GetAsync(RequestUri);
+var body = await response.Content.ReadAsStringAsync();
+using var document = JsonDocument.Parse(body);</pre><p>Las excepciones de red, cancelación, JSON y formato se convierten en un resultado fallido controlado.</p>
+<h2>6. Tecnologías utilizadas</h2><ul><li>C# 14.</li><li>.NET 10.</li><li><code>System.Net.Http</code> para HTTP.</li><li><code>System.Text.Json</code> para JSON.</li><li>xUnit para pruebas unitarias.</li><li>Mermaid para el diagrama de clases editable.</li></ul>
+<h2>7. Ejecución y pruebas</h2><pre>cd CooperativaElProgreso
+
+cd ../CooperativaElProgreso.Tests

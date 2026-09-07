@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CooperativaElProgreso.Tests/CooperativaElProgreso.Tests.csproj" />
+  <Project Path="CooperativaElProgreso/CooperativaElProgreso.csproj" />
+</Solution>

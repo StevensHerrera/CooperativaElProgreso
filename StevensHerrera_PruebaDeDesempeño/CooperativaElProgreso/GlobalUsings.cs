@@ -1,0 +1,16 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Globalization;
+global using System.Linq;
+global using System.Net.Http;
+global using System.Text.Json;
+global using System.Threading.Tasks;
+global using CooperativaElProgreso.Data;
+global using CooperativaElProgreso.Enums;
+global using CooperativaElProgreso.IInterfaces;
+global using CooperativaElProgreso.Infrastructure.ExternalServices;
+global using CooperativaElProgreso.Models;
+global using CooperativaElProgreso.Models.Reports;
+global using CooperativaElProgreso.Repositories;
+global using CooperativaElProgreso.Services;
+global using CooperativaElProgreso.UI;

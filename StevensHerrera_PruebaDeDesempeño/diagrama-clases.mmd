@@ -1,0 +1,216 @@
+---
+config:
+  class:
+    hideEmptyMembersBox: true
+---
+classDiagram
+    direction TB
+
+    namespace Interfaz {
+        class CashierMenu
+        class ManagerMenu
+    }
+
+    namespace Servicios {
+        class IMemberService {
+            <<interface>>
+            +RegisterMember(...) OperationResult~Member~
+            +ListMembers() List~Member~
+            +FindByDocumentNumber(string) Member
+            +FindByName(string) List~Member~
+            +UpdateMember(...) OperationResult~Member~
+            +DeleteMember(string) OperationResult~bool~
+            +GetBalance(Guid) decimal
+            +GetBalanceInUsdAsync(string) Task
+        }
+
+        class IMovementService {
+            <<interface>>
+            +RegisterDeposit(string, decimal) OperationResult~Movement~
+            +RegisterWithdrawal(string, decimal) OperationResult~Movement~
+            +GetMovementsForMember(string) List~Movement~
+        }
+
+        class IReportService {
+            <<interface>>
+            +GetCooperativeSummary() CooperativeSummaryReport
+            +GetTopMembers(int) List~TopMemberReport~
+            +GetDormantMembers() List~DormantMemberReport~
+            +GetPeriodReport(DateTime, DateTime) PeriodReport
+            +GetTopMovements(int) List~TopMovementReport~
+            +GetCashierActivity() List~CashierActivityReport~
+        }
+
+        class IExchangeRateService {
+            <<interface>>
+            +GetOfficialRateAsync() Task
+        }
+
+        class MemberService
+        class MovementService
+        class ReportService
+        class TrmExchangeRateService
+    }
+
+    namespace Persistencia {
+        class InMemoryStore {
+            +List~Member~ Members
+            +List~Movement~ Movements
+        }
+
+        class IMemberRepository {
+            <<interface>>
+            +Create(Member) Member
+            +GetAll() List~Member~
+            +GetById(Guid) Member
+            +Update(Member) bool
+            +Delete(Guid) bool
+            +GetByDocumentNumber(string) Member
+            +SearchByName(string) List~Member~
+            +ExistsByDocumentNumber(string) bool
+        }
+
+        class IMovementRepository {
+            <<interface>>
+            +Add(Movement) Movement
+            +GetAll() List~Movement~
+            +GetByMemberId(Guid) List~Movement~
+            +HasAnyForMember(Guid) bool
+        }
+
+        class MemberRepository
+        class MovementRepository
+    }
+
+    namespace Dominio {
+        class Member {
+            +Guid Id
+            +string DocumentNumber
+            +string FullName
+            +string PhoneNumber
+            +string Address
+            +DateTime RegisteredAt
+        }
+
+        class Movement {
+            +Guid Id
+            +Guid MemberId
+            +MovementType Type
+            +decimal Amount
+            +decimal Fee
+            +DateTime Date
+            +decimal SignedTotal
+        }
+
+        class MovementType {
+            <<enumeration>>
+            Deposit
+            Withdrawal
+        }
+
+        class ExchangeRate {
+            +decimal Value
+            +DateTime ValidFrom
+            +DateTime ValidTo
+        }
+
+        class UsdBalanceResult {
+            +decimal BalanceInCop
+            +decimal BalanceInUsd
+            +ExchangeRate RateUsed
+        }
+
+        class OperationResult~T~ {
+            +bool Success
+            +string Message
+            +T Payload
+        }
+    }
+
+    namespace Reportes {
+        class CooperativeSummaryReport {
+            +decimal TotalBalance
+            +int MemberCount
+            +decimal AverageBalance
+        }
+
+        class TopMemberReport {
+            +string DocumentNumber
+            +string FullName
+            +decimal Balance
+        }
+
+        class DormantMemberReport {
+            +string DocumentNumber
+            +string FullName
+            +DateTime RegisteredAt
+        }
+
+        class PeriodReport {
+            +DateTime StartDate
+            +DateTime EndDate
+            +decimal TotalDeposited
+            +decimal TotalWithdrawn
+            +decimal Difference
+            +int DepositCount
+            +int WithdrawalCount
+        }
+
+        class TopMovementReport {
+            +DateTime Date
+            +MovementType Type
+            +decimal Amount
+            +string MemberFullName
+        }
+
+        class CashierActivityReport {
+            +string FullName
+            +int MovementCount
+            +decimal TotalDeposited
+            +decimal TotalWithdrawn
+            +decimal CurrentBalance
+        }
+    }
+
+%% Relaciones del dominio
+    Member "1" --> "0..*" Movement : registra
+    Movement "*" --> "1" MovementType : clasifica
+    UsdBalanceResult "1" --> "1" ExchangeRate : utiliza
+
+%% Relaciones de persistencia
+InMemoryStore "1" o-- "0..*" Member : almacena
+InMemoryStore "1" o-- "0..*" Movement : almacena
+
+MemberRepository ..|> IMemberRepository : implementa
+MovementRepository ..|> IMovementRepository : implementa
+MemberRepository --> InMemoryStore : utiliza
+MovementRepository --> InMemoryStore : utiliza
+
+%% Relaciones de servicios
+MemberService ..|> IMemberService : implementa
+MovementService ..|> IMovementService : implementa
+ReportService ..|> IReportService : implementa
+TrmExchangeRateService ..|> IExchangeRateService : implementa
+
+MemberService --> IMemberRepository : consulta
+MemberService --> IMovementRepository : consulta
+MemberService --> IExchangeRateService : consulta
+
+MovementService --> IMemberRepository : consulta
+MovementService --> IMovementRepository : consulta
+
+ReportService --> IMemberRepository : consulta
+ReportService --> IMovementRepository : consulta
+
+%% Relaciones de interfaz
+CashierMenu --> IMemberService : utiliza
+CashierMenu --> IMovementService : utiliza
+ManagerMenu --> IReportService : utiliza
+
+%% Resultados de reportes
+IReportService ..> CooperativeSummaryReport : devuelve
+IReportService ..> TopMemberReport : devuelve
+IReportService ..> DormantMemberReport : devuelve
+IReportService ..> PeriodReport : devuelve
+IReportService ..> TopMovementReport : devuelve
+IReportService ..> CashierActivityReport : devuelve

@@ -1,0 +1,17 @@
+sequenceDiagram
+  actor Cajero
+  participant UI as CashierMenu
+  participant Service as MemberService
+  participant Repo as MemberRepository
+  participant TRM as TrmExchangeRateService
+  participant API as datos.gov.co
+  Cajero->>UI: Solicita saldo en USD
+  UI->>Service: GetBalanceInUsdAsync(documento)
+  Service->>Repo: Buscar asociado
+  Repo-->>Service: Member
+  Service->>TRM: GetOfficialRateAsync()
+  TRM->>API: GET /resource/32sa-8pi3.json
+  API-->>TRM: JSON con TRM
+  TRM-->>Service: ExchangeRate
+  Service-->>UI: UsdBalanceResult
+  UI-->>Cajero: Muestra saldo COP y USD
